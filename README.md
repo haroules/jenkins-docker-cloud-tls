@@ -7,9 +7,9 @@ This project uses jenkins casc (configuration as code) to configure the controll
 The script will check requirements, configure, build, and run the container, generate all certs and embed into the containers as needed.  The script will also attempt to clean up resources, so be mindful of running it if you have stopped containers or unused volumes you wish to preserve.  (It will prompt before deleting dangling volumes or containers)
 
 The script is opinionated, and assumes the following pre-requisite setup:
-Docker running rootless as a local user, as well as docker to be accessible via API using TLS with self signed certs. Access to the CA cert, key and API cert are needed for building the container.  
+Docker running rootless as a local user, as well as docker to be accessible via API using TLS with self signed certs. Access to the CA cert, key and API cert are needed for building the container.  Docker Compose, Java, and some other utilities are also required. (Outlined in requirements section below)  
 
-If all goes to plan (and you imported the CA cert you created into a browser), you should be able to access your jenkins controller via browser at https://[fqdn of your host]:8443 and you can run the sample job created.
+If all goes to plan (and you imported the CA cert you created into a browser, as well as updated the casc.yaml and setup.sh script), you should be able to access your jenkins controller via browser at https://[fqdn of your host]:8443 and you can run the sample job created.
 
 # Using the script and configuration template
 Before running the setup.sh, there are a few manual edits to be made as they pertain to your environment.  Future variations of this project will attempt to do that automatically.  At the very least you should confirm these settings before running the script. Sections further below is a table outlining the files and their usage. The following codeblocks will need to be edited manually:
