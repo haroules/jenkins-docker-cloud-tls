@@ -198,6 +198,7 @@ update_jenkins_casc () {
     # todo: update URL and other items that rely on hostname
     # todo: programatically insert docker api credential from local files 
     # so that jenkins can talk to docker api
+    echo "Update jenkins configuration as code (casc) yaml file from data collected in this script"
 }
 
 build_container_and_run_stack () {
@@ -269,7 +270,7 @@ clean_sandbox
 generate_controller_cacerts
 
 # create ca, and server certs to talk with local browser and other utils
-# we'll add these to the cotnainer when its built through copy layer
+# we'll add these to the container when its built through copy layer
 generate_jenkins_app_certs_and_keystore
 
 # run docker compose and check container up and test https connection 

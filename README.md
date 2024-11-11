@@ -1,4 +1,3 @@
-# jenkins-docker-cloud-tls
 
 # Description:
 Example of running jenkins controller from a docker container running rootless, using docker API over TLS, creating a docker cloud in jenkins, and usng jenkins CASC (configuration as code).   There's lots of articles, gists, github repos etc that cover one area of running jenkins or another. The goal here was to put together an automated deployment end to end.  Therefore any changes are source controlled and trackable.
@@ -46,6 +45,100 @@ Before running the setup.sh, there are a few manual edits to be made as they per
 (Update the auth portion of the curl command to coincide with what you used above in casc.yaml)
 ```
 -auth admin:jenkins
+```
+
+##  Example Run:
+```
+name@host1:~/jenkins-docker-cloud-tls$ ./setup.sh 
+docker is installed.
+openssl is installed.
+keytool is installed.
+wget is installed.
+java is installed.
+curl is installed.
+Docker rootless and containerd appears functional.
+Docker API appears functional.
+API response indicates rootless mode in use.
+API response indicates connection to host1.example.com is good.
+Image jenkins/jenkins:lts-jdk17 Is already up to date.
+Image jenkins/agent:jdk17 Is already up to date.
+cleaning intermediate files if they exist.
+removed 'cacerts'
+removed 'docker_api_root_ca.pem'
+[+] Running 1/0
+ ✔ Volume jenkins-home-1  Removed                                                                                   0.0s 
+Removing dangling containers if they exist.
+WARNING! This will remove all dangling images.
+Are you sure you want to continue? [y/N] y
+Deleted Images:
+deleted: sha256:3842ecb942a4931ecb7067f9be021e01f8712c84d72fcfc748f6541ed922f8b3
+
+Total reclaimed space: 0B
+Remove unused volumes if they exist.
+docker_api_root_ca.pem is good for at least 2 weeks.
+docker_api_root_ca.pem CN matches hostname.
+[+] Building 1.6s (5/5) FINISHED                                                                         docker:rootless
+ => [internal] load build definition from DockerfileGetcacerts                                                      0.0s
+ => => transferring dockerfile: 78B                                                                                 0.0s
+ => [internal] load metadata for docker.io/jenkins/jenkins:lts-jdk17                                                0.0s
+ => [internal] load .dockerignore                                                                                   0.0s
+ => => transferring context: 2B                                                                                     0.0s
+ => CACHED [1/1] FROM docker.io/jenkins/jenkins:lts-jdk17                                                           0.0s
+ => exporting to client directory                                                                                   1.5s
+ => => copying files 470.78MB                                                                                       1.5s
+'jenkinsrootfs/opt/java/openjdk/lib/security/cacerts' -> 'cacerts'
+Certificate was added to keystore
+keytool import of ca cert pem into cacerts appears successful.
+keytool lists Docker API CA alias in keystore cacerts as trusted entry.
+generate CA
+generate jenkins server priv key and csr
+generate alt names file for cert
+generate jenkins server cert
+server-cert.pem is good for at least 2 weeks.
+server-cert.pem CN matches hostname.
+Generated CA and cert passed verification.
+generate jenkins keystore to hold self signed cert
+Generating 4,096 bit RSA key pair and self-signed certificate (SHA384withRSA) with a validity of 365 days
+	for: CN=jenkins, OU=host1, O=example.com, C=US
+create pkcs12 file of server cert and key
+import pkcs12 file to keystore
+Importing keystore jenkins.p12 to jenkins_keystore.jks...
+Entry for alias 1 successfully imported.
+Import command completed:  1 entries successfully imported, 0 entries failed or cancelled
+import server ca to keystore
+Certificate was added to keystore
+Running docker compose and standing up app stack
+[+] Building 11.2s (12/12) FINISHED                                                                      docker:rootless
+ => [jenkins_controller internal] load build definition from JenkinsDockerfile                                      0.0s
+ => => transferring dockerfile: 889B                                                                                0.0s
+ => WARN: LegacyKeyValueFormat: "ENV key=value" should be used instead of legacy "ENV key value" format (line 9)    0.0s
+ => WARN: LegacyKeyValueFormat: "ENV key=value" should be used instead of legacy "ENV key value" format (line 15)   0.0s
+ => [jenkins_controller internal] load metadata for docker.io/jenkins/jenkins:lts-jdk17                             0.0s
+ => [jenkins_controller internal] load .dockerignore                                                                0.0s
+ => => transferring context: 2B                                                                                     0.0s
+ => CACHED [jenkins_controller 1/1] FROM docker.io/jenkins/jenkins:lts-jdk17                                        0.0s
+ => [jenkins_controller internal] load build context                                                                0.0s
+ => => transferring context: 188.87kB                                                                               0.0s
+ => [jenkins_controller 2/6] COPY jenkins_keystore.jks /var/jenkins_home/jenkins_keystore.jks                       0.0s
+ => [jenkins_controller 3/6] COPY cacerts /opt/java/openjdk/lib/security/cacerts                                    0.0s
+ => [jenkins_controller 4/6] COPY --chown=jenkins:jenkins ./plugins.txt /usr/share/jenkins/plugins.txt              0.1s
+ => [jenkins_controller 5/6] RUN jenkins-plugin-cli -f /usr/share/jenkins/plugins.txt                              10.5s
+ => [jenkins_controller 6/6] COPY casc.yaml /var/jenkins_home/casc.yaml                                             0.0s 
+ => [jenkins_controller] exporting to image                                                                         0.4s
+ => => exporting layers                                                                                             0.4s
+ => => writing image sha256:b43c764dab6cabd2b1f691b7cd2eac252499e16e5e3a98203000dbf6dfdf1e91                        0.0s
+ => => naming to docker.io/jenkins/controller-casc                                                                  0.0s
+ => [jenkins_controller] resolving provenance for metadata file                                                     0.0s
+[+] Running 3/3
+ ✔ Network jenkins-docker-cloud-tls_jenkins  Created                                                                0.1s 
+ ✔ Volume "jenkins-home-1"                   Created                                                                0.0s 
+ ✔ Container jenkins-controller-1            Started                                                                0.4s 
+Verify container running post compose
+container now running
+Check jenkins app responding via curl
+.........jenkins app now running
+retrieving latest jenkins cli jar from app
+uploading a container agent test job
 ```
 
 # Basic Requirements:
