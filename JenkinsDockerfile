@@ -1,0 +1,20 @@
+FROM jenkins/jenkins:lts-jdk17
+
+# copy jenkins keystore with self signed cert and ca imported to access jenkins via ssl
+COPY jenkins_keystore.jks /var/jenkins_home/jenkins_keystore.jks
+# copy cacerts file with self signed cert and ca for docker api so jenkins can access docker
+COPY cacerts /opt/java/openjdk/lib/security/cacerts
+
+# allows to skip Jenkins setup wizard
+ENV JAVA_OPTS -Djenkins.install.runSetupWizard=false
+# install jenkins plugins from list
+COPY --chown=jenkins:jenkins ./plugins.txt /usr/share/jenkins/plugins.txt
+RUN jenkins-plugin-cli -f /usr/share/jenkins/plugins.txt
+# need plugins installed before trying to use casc
+# set jenkins config as code
+ENV CASC_JENKINS_CONFIG /var/jenkins_home/casc.yaml
+# copy config as code 
+COPY casc.yaml /var/jenkins_home/casc.yaml
+
+# volume for Jenkins settings
+VOLUME /var/jenkins_home

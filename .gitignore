@@ -1,0 +1,15 @@
+# safe copies
+*.orig
+*.bak
+
+# certs and pems
+*.pem
+*.p12
+*.jks
+*.cnf
+*.srl
+cacerts
+
+# random intermediate files
+*.jar
+

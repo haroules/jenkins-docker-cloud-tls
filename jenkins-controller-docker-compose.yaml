@@ -1,0 +1,27 @@
+services:
+  jenkins_controller:
+    build:
+      context: .
+      dockerfile: JenkinsDockerfile
+    image: jenkins/controller-casc
+    privileged: false
+    container_name: $CONTAINER_NAME
+    ports:
+      - 8443:8443
+      - 50000:50000
+    volumes:
+      - type: volume
+        source: code
+        target: /var/jenkins_home
+    env_file:
+      - jenkins-controller-docker-compose.env
+    networks:
+      - jenkins
+# create a volume from env var passed to compose
+volumes:
+  code:
+    name: "${JENKINS_HOME}"
+
+networks:
+  jenkins:
+    driver: bridge
