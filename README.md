@@ -150,6 +150,7 @@ uploading a container agent test job
 - OpenSSL installed (needed for certificate and CA operations)
 - Curl installed
 - Wget installed
+- jq installed (needed to parse and query json responses)
 - Firefox or Chrome browser and understanding of how to import a CA into them. (examples in the links section)
 - fqdn properly set for the host, and host resolvable by ip other than localhost
 
@@ -187,14 +188,19 @@ The minimal jenkins configuration includes creating a credential to talk to dock
 
 6. We'll pull the latest jenkins-cli jar from the running application, and use it to upload a sample job. To run the job, log into the application via browser, which, when run, will dynamically spin a container running in docker as an agent and run a simple echo command, run in the agent container. At conclusion of the job, the agent container is stopped.
 
-# Future Improvements, Links, and TLDR;
+# Credits, Future Improvements, Links, and TLDR;
 
 The purpose of this example was to create an starting foundation for deployment automation of jenkins casc, containerization, and using tls/https.  While every attempt was made to be aligned with security best practices, there is always room for improvement. While this should work out of the box with minimal changes, it's not expected that one would use it without customization. The expectation is that some modification would be made to secure, and operationalize this to meet your work environment, and this is merely a quickstart. Future versions will be more opinionated and likely force this. 
+
+Credits:
+Matthias Lohr for the image update check script, which was modified (handle architecture, and allow not already local images) and integrated directly.
+https://gitlab.com/MatthiasLohr/omnibus-gitlab-management-scripts/-/blob/main/docker-image-update-check.sh?ref_type=heads
+
 
 Planned Future improvements:
 - More parameterization of secrets and inputs reducing the chance of storing secrets in source
 - Parameterizing to support different Jenkins images besides lts-jdk17
-- More thorough checks and balances, error handling, retrym ability to skip checks, and cleanup steps
+- More thorough checks and balances, error handling, retry ability to skip checks, and cleanup steps
 - Automate CA cert import into Chrome/Firefox
 - Look at using let's encrypt or other certificate solutions
 - Add lifecycle to the script: initial deploy, backup (before delete), re-deploy, update etc
