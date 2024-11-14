@@ -1,6 +1,19 @@
+<!-- TOC -->
+
+- [Description:](#description)
+- [Using the script and configuration template](#using-the-script-and-configuration-template)
+- [Example Script Run:](#example-script-run)
+- [Jenkins Screenshots:](#jenkins-screenshots)
+- [Basic Requirements:](#basic-requirements)
+- [Warnings and Recommendations:](#warnings-and-recommendations)
+- [File descriptions and usage:](#file-descriptions-and-usage)
+- [Script General Workflow:](#script-general-workflow)
+- [Credits, Future Improvements, Links, and TLDR;](#credits-future-improvements-links-and-tldr)
+
+<!-- /TOC -->
 
 # Description:
-Example of running jenkins controller from a docker container running rootless, using docker API over TLS, creating a docker cloud in jenkins, and usng jenkins CASC (configuration as code).   There's lots of articles, gists, github repos etc that cover one area of running jenkins or another. The goal here was to put together an automated deployment end to end.  Therefore any changes are source controlled and trackable.
+Example of running jenkins controller from a docker container running rootless, using docker API over TLS, creating a docker cloud in jenkins, and usng jenkins CASC (configuration as code).   There's lots of articles, gists, github repos etc that cover one area of running jenkins or another. The goal here was to put together an automated deployment end to end.  Therefore any changes are source controlled and trackable. 
 
 This project uses jenkins casc (configuration as code) to configure the controller. Jenkins plugins, and credentials for connecting to the docker api as well as certificate and keystores are injected during the container build. The casc configuration includes set up of a docker cloud on the jenkins controller, and push a test job that will exercise running agents as containers.
 
@@ -14,27 +27,8 @@ If all goes to plan (and you imported the CA cert you created into a browser, as
 # Using the script and configuration template
 Before running the setup.sh, there are a few manual edits to be made as they pertain to your environment.  Future variations of this project will attempt to do that automatically.  At the very least you should confirm these settings before running the script. Sections further below is a table outlining the files and their usage. The following codeblocks will need to be edited manually:
 
-- casc.yaml ( 2 sections need editing)
-1. "replace from script" should be replaced with the certificate contents for Docker API access
-```    
-    - credentials:
-      - x509ClientCert:
-          clientCertificate: |-
-            -----BEGIN CERTIFICATE-----
-            replace from script
-            -----END CERTIFICATE-----
-          clientKeySecret: |-
-            -----BEGIN PRIVATE KEY-----
-            replace from script
-            -----END PRIVATE KEY-----
-          id: "docker-api"
-          scope: GLOBAL
-          serverCaCertificate: |-
-            -----BEGIN CERTIFICATE-----
-            replace from script
-            -----END CERTIFICATE-----
-```
-2. The jenkins admin user password should be changed, note that you will also need to update it in setup.sh
+- casc.yaml
+1. The jenkins admin user password should be changed, note that you will also need to update it in setup.sh
 ```
  users:
       - id: "admin"
@@ -50,7 +44,7 @@ Before running the setup.sh, there are a few manual edits to be made as they per
 
 <summary>Example Script Run</summary>
 
-##  Example Script Run:
+#  Example Script Run:
 ```
 name@host1:~/github/jenkins-docker-cloud-tls$ ./setup.sh -e
 --Function: parse_cli--
@@ -221,6 +215,7 @@ uploading a container agent test job
 - jq installed (needed to parse and query json responses)
 - Firefox or Chrome browser and understanding of how to import a CA into them. (examples in the links section)
 - fqdn properly set for the host, and host resolvable by ip other than localhost
+- yq installed (needed to programatically edit yaml files) 
 
 # Warnings and Recommendations:
 The secrets used for the jenkins admin user and keystore should also be changed prior to production use.
@@ -266,7 +261,6 @@ https://gitlab.com/MatthiasLohr/omnibus-gitlab-management-scripts/-/blob/main/do
 
 
 Planned Future improvements:
-- automate update of jenkins casc from local files
 - More parameterization of secrets and inputs reducing the chance of storing secrets in source
 - More thorough checks and balances, error detection and handling.
 - Automate CA cert import into Chrome/Firefox
