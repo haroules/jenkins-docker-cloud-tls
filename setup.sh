@@ -76,7 +76,7 @@ printhelp () {
 
 check_binary_available () {
     echo -e "\n--Function: check_binary_available--"
-    binarylist=(docker openssl keytool wget java curl jq yq)
+    binarylist=(git docker openssl keytool wget java curl jq yq sed)
     for i in "${binarylist[@]}"; do
         # Check if the binary exists
         if command -v "$i" >/dev/null 2>&1; then
@@ -155,6 +155,7 @@ check_docker_api () {
 
 clean_intermediate_files () {
     echo -e "\n--Function: clean_intermediate_files--"
+    #TODO use git to confirm the workspace is clean
     filelist=(cacerts docker_api_root_ca.pem ca-cert.srl ca-key.pem server-req.pem server-key.pem server-ext.cnf server-cert.pem jenkins_keystore.jks jenkins.p12 jenkins-cli.jar)
     if [[ $execute == 0 ]]; then
         for i in "${filelist[@]}"; do

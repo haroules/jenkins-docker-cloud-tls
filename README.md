@@ -217,6 +217,7 @@ uploading a container agent test job
 </details>
 
 # Basic Requirements:
+- git ( not only needed to pull this project, but also to detect local changes during run)
 - Docker Compose V2
 - Docker Rootless configured and using TLS for API connections to the socket
 - Ubuntu 24 (should work on other distros as well, albeit minor modifications may be required)
@@ -229,12 +230,23 @@ uploading a container agent test job
 - Firefox or Chrome browser and understanding of how to import a CA into them. (examples in the links section)
 - fqdn properly set for the host, and host resolvable by ip other than localhost
 - yq installed (needed to programatically edit yaml files) 
+- sed (needed to programatically edit env files)
 
-# Warnings and Recommendations:
+# Warnings, Secrets, and Recommendations:
+## Warnings
 The secrets used for the jenkins admin user and keystore should also be changed prior to production use.
 While the .gitignore file is in place, to prevent accidental storing of secrets and credentials, caution should be applied when modifying any templates to contain secrets so as to prevent accidental upload to git such as the yaml files or env files, which are not protected by .gitignore.
 
-Commercially purchased and trusted certs are better. This example uses self signed for demonstration purposes only, in a production environment, it's recommended to use commercially purchased or domain generated certs that align with your environment.
+## Secrets
+Secrets that are updated on the fly from the script if supplied (defaults will be used otherwise but not recommended):
+1. cacerts keystore pw embedded in the container that allow Jenkins to trust your local Docker API self signed CA
+2. jenkins admin user (allows login to the application in the browser as well as job upload and exercise)
+3. jenkins java keystore (allows jenkins to serve https to the browser and trust it's own self signed CA)
+
+## Recommendations
+Commercially purchased and trusted certs are better. This example uses self signed for demonstration purposes only, in a production environment, it's recommended to use commercially purchased or domain generated certs that align with your environment. Frequent update of the container, and plugins is also recommended.
+
+
 
 # File descriptions and usage:
 | filename | description |
@@ -255,14 +267,16 @@ While the shell script is commented, below is an overview of what it does.
 
 2. Rudimentary check that docker is running rootless, and accessible via API using tls authenticaiton
 
-3. Pull a copy of the cacerts from the latest controller image, and inject our Docker API tls certs into the cacerts file so jenkins can communicate with docker via API.  This requires exploding the image to a filesystem, copying out the cacerts file, and deleting the intermediate exploded filesystem.
+3. Reasonable attempt to clean up from previous runs, such as deleting intermediate files and resetting the sandbox to clean. Check for newer versions of the controller and agent containers and pull them if they exist.
 
-4. Generate a CA, and self signed certs for jenkins controller to be able to be accessed by the browser using tls/https. It injects these into a keystore for consumption by Jenkins. The CA for jenkins will need to be manually imported into your browser to prevent untrusted certificate errors while accessing the application in the browser.
+4. Pull a copy of the cacerts from the latest controller image, and inject our Docker API tls certs into the cacerts file so jenkins can communicate with docker via API.  This requires exploding the image to a filesystem, copying out the cacerts file, and deleting the intermediate exploded filesystem. Update cacerts pw from default.
 
-5.  Build the container from Dockerfile which will use the certs created in previous steps, install plugins necessary from a list, mount volumes, and configure the controller using Jenkins CASC to create an initial user, some basic creds, and minimal server configuration, and avoid using the install wizard. 
+5. Generate a CA, and self signed certs for jenkins controller to be able to be accessed by the browser using tls/https. It injects these into a keystore for consumption by Jenkins. The CA for jenkins will need to be manually imported into your browser to prevent untrusted certificate errors while accessing the application in the browser. Update keystore pw where described in other sections.
+
+6.  Build the container from Dockerfile which will use the certs created in previous steps, install plugins necessary from a list, mount volumes, and configure the controller using Jenkins CASC to create an initial user, some basic creds, and minimal server configuration, and avoid using the install wizard.
 The minimal jenkins configuration includes creating a credential to talk to docker via API, as well as setting up the docker cloud, and an agent configuration run from a separate container on the local docker cloud. Docker compose will then be called to stand up the container, volume, and network. Lastly there is a basic attempt at verifying the container is running, and that the jenkins application is up and responding.
 
-6. We'll pull the latest jenkins-cli jar from the running application, and use it to upload a sample job. To run the job, log into the application via browser, which, when run, will dynamically spin a container running in docker as an agent and run a simple echo command, run in the agent container. At conclusion of the job, the agent container is stopped.
+7. We'll pull the latest jenkins-cli jar from the running application, and use it to upload a sample job. To run the job, log into the application via browser, which, when run, will dynamically spin a container running in docker as an agent and run a simple echo command, run in the agent container. At conclusion of the job, the agent container is stopped.
 
 # Credits, Future Improvements, Links, and TLDR;
 
