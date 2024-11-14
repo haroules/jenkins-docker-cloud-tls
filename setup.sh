@@ -8,12 +8,16 @@ execute=1
 skipchecks=1
 # password for jenkins user supplied if -p selected
 jenkspassword="default"
+# jenkins keystore pw user supplied if -k selected
+jenkskeystorepw="changeit"
+# jenkins cacerts pw user supplied if -c selected
+jenkscacertpw="changeit"
 
 parse_cli () {
     local OPTIND
     optionselected=""
     echo "--Function: parse_cli--"
-    while getopts "p:ehs" opt; do
+    while getopts "p:ehsk:c:" opt; do
         case $opt in
             e | -e | --e)
                 echo "Option -e selected, will execute rather than dry-run !"
@@ -30,6 +34,16 @@ parse_cli () {
                 jenkspassword=$OPTARG
                 optionselected+="-p "
                 ;;
+            k | -k | --k)
+                echo "Option -k selected, password for Jenkins keystore supplied !"
+                jenkskeystorepw=$OPTARG
+                optionselected+="-k "
+                ;;
+            c | -c | --c)
+                echo "Option -c selected, password for Jenkins cacerts supplied !"
+                jenkscacertpw=$OPTARG
+                optionselected+="-c "
+                ;;    
             :)
                 echo "Option -${OPTARG} requires an argument."
                 printhelp
@@ -50,11 +64,13 @@ parse_cli () {
 }
 
 printhelp () {
-     echo "./setup.sh -e -s -p [password for jenkins]"
+     echo "./setup.sh -e -s -p [password for jenkins] -k [password for java keystore] -c [password for cacerts]"
      echo "-e would execute and actually run the script, default is dry-run print what it would do."
      echo "-s would skip pre-requisite checks."
      echo "-p is to supply the password for the jenkins user."
-     echo "default password stored in config used when -p is not specified."
+     echo "-k is to supply the password for the java keystore used by jenkins."
+     echo "-c is to supply the password for the cacerts store used by jenkins."
+     echo "default password stored in script used when -p, -k, or -c is not specified."
      exit 0
 }
 
@@ -193,15 +209,15 @@ check_certificate () {
     echo -e "\n--Function: check_certificate--"
     inputcert=$1
     # check valid for at least 2 weeks
-    dockcacheckoutput=$(openssl x509 -in $inputcert -text -noout -checkend "1209600")
-    if [[ $dockcacheckoutput == *"Certificate will not expire"* ]]; then
+    certcheckoutput=$(openssl x509 -in $inputcert -text -noout -checkend "1209600")
+    if [[ $certcheckoutput == *"Certificate will not expire"* ]]; then
         echo "$inputcert is good for at least 2 weeks."
     else
         echo "$inputcert will expire in less than 2 weeks, exiting."
         exit -1
     fi
     # opinionated check certificate CommonName matches hostname
-    if [[ $dockcacheckoutput == *"CN = $hostname"* ]]; then
+    if [[ $certcheckoutput == *"CN = $hostname"* ]]; then
         echo "$inputcert CN matches hostname."
     else
         echo "$inputcert CN doesn't match hostname, exiting."
@@ -276,7 +292,17 @@ generate_controller_cacerts () {
     echo -e "\n--Function: generate_controller_cacerts--"
     if [[ $execute -eq 0 ]]; then
         echo "Get CA cert from local docker API and verify it"
-        openssl s_client -showcerts -connect $hostname:2376 </dev/null 2>/dev/null | openssl x509 -outform PEM > docker_api_root_ca.pem
+        #openssl s_client -showcerts -connect $hostname:2376 </dev/null 2>/dev/null | openssl x509 -outform PEM > docker_api_root_ca.pem
+        showcert=$(openssl s_client -showcerts -connect $hostname:2376 </dev/null 2>/dev/null) 
+        if [ -z "${showcert}" ]; then
+            echo "openssl couldn't connect to docker endpoint, exiting. is docker api running or network down ?"
+            exit -1
+        fi
+        echo "$showcert" | openssl x509 -outform PEM > docker_api_root_ca.pem
+        if [[ ! -f docker_api_root_ca.pem  || ! -s docker_api_root_ca.pem ]] then
+            echo "docker_api_root_ca.pem wasn't generated, exiting."
+            exit -1
+        fi
         check_certificate docker_api_root_ca.pem
        
         # programatically get cacerts file from existing jenkins controller container
@@ -287,6 +313,7 @@ generate_controller_cacerts () {
         rm -rf jenkinsrootfs
 
         #import ca cert pem into cacerts keystore from controller container (allows jenkins to talk to Docker API over tls)
+        # can't change the default storepass as supplied by jenkins
         keytoolimportoutput=$(keytool -import -noprompt -trustcacerts -storepass changeit -file docker_api_root_ca.pem -alias $hostname -keystore cacerts)
         if [ "$?" -ne 0 ]; then
             echo "keytool import of ca cert pem into cacerts failed, exiting."
@@ -302,6 +329,8 @@ generate_controller_cacerts () {
             echo "keytool isnt showing Docker API  CA cert imported correctly"
             exit -1
         fi
+        echo "Changing cacerts default password of changeit for security"
+        keytool -storepasswd -keystore cacerts -storepass changeit -new $jenkscacertpw
     else
         echo "Execute flag not set, here's what i would have done:"
         echo "openssl s_client -showcerts -connect $hostname:2376 </dev/null 2>/dev/null | openssl x509 -outform PEM > docker_api_root_ca.pem"
@@ -309,8 +338,9 @@ generate_controller_cacerts () {
         echo "docker build -f DockerfileGetcacerts -o jenkinsrootfs ."
         echo "cp -v jenkinsrootfs/opt/java/openjdk/lib/security/cacerts cacerts"
         echo "rm -rf jenkinsrootfs"
-        echo "keytool -import -noprompt -trustcacerts -storepass changeit -file docker_api_root_ca.pem -alias $hostname-DockerCA -keystore cacerts"
-        echo "keytool -list -keystore cacerts -alias $hostname-DockerCA -storepass changeit"
+        echo "keytool -import -noprompt -trustcacerts -storepass changeit -file docker_api_root_ca.pem -alias $hostname -keystore cacerts"
+        echo "keytool -list -keystore cacerts -alias $hostname -storepass changeit"
+        echo "keytool -storepasswd -keystore cacerts -storepass changeit -new [pw redacted]"
     fi
 }
 
@@ -337,23 +367,25 @@ generate_jenkins_app_certs_and_keystore () {
             exit -1
         fi
         echo "generate jenkins keystore to hold self signed cert"
-        keytool -genkey -dname "cn=jenkins, ou=$hostnameshort, o=$domainname, c=US" -keyalg RSA -alias jenkinselfsigned -keystore jenkins_keystore.jks -storepass changeit -keysize 4096 -validity 365
+        keytool -genkey -dname "cn=jenkins, ou=$hostnameshort, o=$domainname, c=US" -keyalg RSA -alias jenkinselfsigned -keystore jenkins_keystore.jks -storepass $jenkskeystorepw -keysize 4096 -validity 365
         echo "create pkcs12 file of server cert and key"
-        openssl pkcs12 -export -in server-cert.pem -inkey server-key.pem -out jenkins.p12 -password pass:changeit
+        openssl pkcs12 -export -in server-cert.pem -inkey server-key.pem -out jenkins.p12 -password pass:$jenkskeystorepw
         echo "import pkcs12 file to keystore"
-        keytool -importkeystore -noprompt -srckeystore jenkins.p12 -srcstoretype PKCS12 -destkeystore jenkins_keystore.jks -deststoretype JKS -deststorepass changeit -srcstorepass changeit
+        keytool -importkeystore -noprompt -srckeystore jenkins.p12 -srcstoretype PKCS12 -destkeystore jenkins_keystore.jks -deststoretype JKS -deststorepass $jenkskeystorepw -srcstorepass $jenkskeystorepw
         echo "import server ca to keystore"
-        keytool -importcert -noprompt -keystore jenkins_keystore.jks -trustcacerts -alias $hostname-JenkinsCA -file ca-cert.pem -deststorepass changeit
+        keytool -importcert -noprompt -keystore jenkins_keystore.jks -trustcacerts -alias $hostname-JenkinsCA -file ca-cert.pem -deststorepass $jenkskeystorepw
+        echo "update docker compose env file to reflect jenkins keystore pw"
+        sed -i -E "s/httpsKeyStorePassword=.*\"/httpsKeyStorePassword=$jenkskeystorepw\"/" jenkins-controller-docker-compose.env
     else
         echo "Execute flag not set, here's what i would have done:"
         echo "openssl req -x509 -newkey rsa:4096 -days 360 -nodes -keyout ca-key.pem -out ca-cert.pem -subj "/C=US/ST=MA/L=Boston/O=Self/OU=jenkins/CN=$hostname-CA/emailAddress=" >/dev/null 2>&1"
         echo "openssl req -newkey rsa:4096 -keyout server-key.pem -nodes -out server-req.pem -subj "/C=US/ST=MA/L=Boston/O=Self/OU=jenkins/CN=$hostname-Server/emailAddress=" >/dev/null 2>&1"
         echo "echo "subjectAltName=DNS:$hostnameshort,DNS:$hostname,IP:$ip" > server-ext.cnf"
         echo "openssl x509 -req -in server-req.pem -days 360 -CA ca-cert.pem -CAkey ca-key.pem -CAcreateserial -out server-cert.pem -extfile server-ext.cnf >/dev/null 2>&1"
-        echo "keytool -genkey -dname "cn=jenkins, ou=$hostnameshort, o=$domainname, c=US" -keyalg RSA -alias jenkinselfsigned -keystore jenkins_keystore.jks -storepass changeit -keysize 4096 -validity 365"
-        echo "openssl pkcs12 -export -in server-cert.pem -inkey server-key.pem -out jenkins.p12 -password pass:changeit"
-        echo "keytool -importkeystore -noprompt -srckeystore jenkins.p12 -srcstoretype PKCS12 -destkeystore jenkins_keystore.jks -deststoretype JKS -deststorepass changeit -srcstorepass changeit"
-        echo "keytool -importcert -noprompt -keystore jenkins_keystore.jks -trustcacerts -alias $hostname-JenkinsCA -file ca-cert.pem -deststorepass changeit"
+        echo "keytool -genkey -dname "cn=jenkins, ou=$hostnameshort, o=$domainname, c=US" -keyalg RSA -alias jenkinselfsigned -keystore jenkins_keystore.jks -storepass [pw redacted] -keysize 4096 -validity 365"
+        echo "openssl pkcs12 -export -in server-cert.pem -inkey server-key.pem -out jenkins.p12 -password pass:[pw redacted]"
+        echo "keytool -importkeystore -noprompt -srckeystore jenkins.p12 -srcstoretype PKCS12 -destkeystore jenkins_keystore.jks -deststoretype JKS -deststorepass [pw redacted] -srcstorepass [pw redacted]"
+        echo "keytool -importcert -noprompt -keystore jenkins_keystore.jks -trustcacerts -alias $hostname-JenkinsCA -file ca-cert.pem -deststorepass [pw redacted]"
     fi
 }
 
@@ -379,6 +411,11 @@ update_jenkins_casc () {
     yq -i ".credentials.system.domainCredentials[].credentials[].x509ClientCert.serverCaCertificate=\"$cacertval\"" casc.yaml
     clientkeyval=$(<$path2certs/server-key.pem)
     yq -i ".credentials.system.domainCredentials[].credentials[].x509ClientCert.clientKeySecret=\"$clientkeyval\"" casc.yaml
+    if [[ "$jenkspassword" != "default" ]]; then
+        echo "User supplied password will be injected"
+        yq -i ".jenkins.securityRealm.local.users[0].password=\"$jenkspassword\"" casc.yaml
+    fi
+
 }
 
 build_container_and_run_stack () {
@@ -438,11 +475,11 @@ exercise_jenkins () {
         wget -q https://$hostname:8443/jnlpJars/jenkins-cli.jar --no-check-certificate
 
         echo "uploading a container agent test job"
-        java -Djavax.net.ssl.trustStore=jenkins_keystore.jks -Djavax.net.ssl.trustStorePassword=changeit -jar jenkins-cli.jar -auth admin:jenkins -s https://$hostname:8443/ create-job "Test Agent" < TestAgent.xml
+        java -Djavax.net.ssl.trustStore=jenkins_keystore.jks -Djavax.net.ssl.trustStorePassword=$jenkskeystorepw -jar jenkins-cli.jar -auth admin:$jenkspassword -s https://$hostname:8443/ create-job "Test Agent" < TestAgent.xml
     else
         echo "Execute flag not set, here's what i would have done:"
         echo "wget -q https://$hostname:8443/jnlpJars/jenkins-cli.jar --no-check-certificate"
-        echo "java -Djavax.net.ssl.trustStore=jenkins_keystore.jks -Djavax.net.ssl.trustStorePassword=changeit -jar jenkins-cli.jar -auth admin:jenkins -s https://$hostname:8443/ create-job "Test Agent" < TestAgent.xml"
+        echo "java -Djavax.net.ssl.trustStore=jenkins_keystore.jks -Djavax.net.ssl.trustStorePassword=[*pw redact*] -jar jenkins-cli.jar -auth admin:[*pw redact*] -s https://$hostname:8443/ create-job "Test Agent" < TestAgent.xml"
     fi
 }
 # end function defs
