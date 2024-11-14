@@ -46,10 +46,13 @@ Before running the setup.sh, there are a few manual edits to be made as they per
 ```
 -auth admin:jenkins
 ```
+<details>
 
-##  Example Run:
+<summary>Example Script Run</summary>
+
+##  Example Script Run:
 ```
-name@utility1:~/github/jenkins-docker-cloud-tls$ ./setup.sh -e
+name@host1:~/github/jenkins-docker-cloud-tls$ ./setup.sh -e
 --Function: parse_cli--
 Option -e selected, will execute rather than dry-run !
 Options selected: -e 
@@ -69,7 +72,7 @@ Docker rootless and containerd appears functional.
 --Function: check_docker_api--
 Docker API appears functional.
 API response indicates rootless mode in use.
-API response indicates connection to utility1.moreinternal.com is good.
+API response indicates connection to host1.example.com is good.
 
 --Function: pull_latest_image--
 Checking for available update for docker.io/jenkins/jenkins:lts-jdk17...
@@ -145,7 +148,7 @@ server-cert.pem CN matches hostname.
 Generated CA and cert passed verification.
 generate jenkins keystore to hold self signed cert
 Generating 4,096 bit RSA key pair and self-signed certificate (SHA384withRSA) with a validity of 365 days
-	for: CN=jenkins, OU=utility1, O=moreinternal.com, C=US
+	for: CN=jenkins, OU=host1, O=example.com, C=US
 create pkcs12 file of server cert and key
 import pkcs12 file to keystore
 Importing keystore jenkins.p12 to jenkins_keystore.jks...
@@ -194,6 +197,17 @@ retrieving latest jenkins cli jar from app
 uploading a container agent test job
 
 ```
+</details>
+
+<details>
+<summary>Jenkins Screenshots</summary>
+
+# Jenkins Screenshots:
+![SuccessfulRun](screenshots/SuccessfulRun.png)
+![JobDetails](screenshots/JobDetails.png)
+![DockerCloudStats](screenshots/DockerCloudStats.png)
+
+</details>
 
 # Basic Requirements:
 - Docker Compose V2

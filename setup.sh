@@ -60,7 +60,7 @@ printhelp () {
 
 check_binary_available () {
     echo -e "\n--Function: check_binary_available--"
-    binarylist=(docker openssl keytool wget java curl jq)
+    binarylist=(docker openssl keytool wget java curl jq yq)
     for i in "${binarylist[@]}"; do
         # Check if the binary exists
         if command -v "$i" >/dev/null 2>&1; then
@@ -101,7 +101,7 @@ check_docker_api () {
     # opinionated location of docker API certs follows
     path2certs="/home/$username/.docker/certs/"
     filelist=(ca-cert.pem server-cert.pem server-key.pem)
-    # check all 3 files are there, exit otherwise
+    # check all 3 files are there, exit otherwise, since won't be able to update jenkins casc with key information
     for i in "${filelist[@]}"; do
         if [ ! -f $path2certs/$i ]; then
             echo "$path2certs/$i is missing, can't check docker api over tls"
@@ -278,7 +278,7 @@ generate_controller_cacerts () {
         echo "Get CA cert from local docker API and verify it"
         openssl s_client -showcerts -connect $hostname:2376 </dev/null 2>/dev/null | openssl x509 -outform PEM > docker_api_root_ca.pem
         check_certificate docker_api_root_ca.pem
-
+       
         # programatically get cacerts file from existing jenkins controller container
         # delete exploded filesystem when done
         echo 'FROM jenkins/jenkins:lts-jdk17' > DockerfileGetcacerts
@@ -287,7 +287,7 @@ generate_controller_cacerts () {
         rm -rf jenkinsrootfs
 
         #import ca cert pem into cacerts keystore from controller container (allows jenkins to talk to Docker API over tls)
-        keytoolimportoutput=$(keytool -import -noprompt -trustcacerts -storepass changeit -file docker_api_root_ca.pem -alias $hostname-DockerCA -keystore cacerts)
+        keytoolimportoutput=$(keytool -import -noprompt -trustcacerts -storepass changeit -file docker_api_root_ca.pem -alias $hostname -keystore cacerts)
         if [ "$?" -ne 0 ]; then
             echo "keytool import of ca cert pem into cacerts failed, exiting."
             echo "$keytoolimportoutput"
@@ -295,8 +295,8 @@ generate_controller_cacerts () {
         else
             echo "keytool import of ca cert pem into cacerts appears successful."
         fi
-        controllercacertscheck=$(keytool -list -keystore cacerts -alias $hostname-DockerCA -storepass changeit)
-        if [[ $controllercacertscheck =~ $hostname-DockerCA && $controllercacertscheck =~ "trustedCertEntry" ]] then
+        controllercacertscheck=$(keytool -list -keystore cacerts -alias $hostname -storepass changeit)
+        if [[ $controllercacertscheck =~ $hostname && $controllercacertscheck =~ "trustedCertEntry" ]] then
             echo "keytool lists Docker API CA alias in keystore cacerts as trusted entry."
         else
             echo "keytool isnt showing Docker API  CA cert imported correctly"
@@ -363,6 +363,22 @@ update_jenkins_casc () {
     # todo: programatically insert docker api credential from local files 
     # so that jenkins can talk to docker api
     echo "Update jenkins configuration as code (casc) yaml file from data collected in this script"
+    # update URL/i to reflect hostname
+    locationurl="https://$hostname:8443/"
+    yq -i ".unclassified.location.url=\"$locationurl\"" casc.yaml
+    adminemail="admin@$hostname"
+    yq -i ".unclassified.location.adminAddress=\"$adminemail\"" casc.yaml
+    dockuri="tcp://$hostname:2376"
+    yq -i ".jenkins.clouds[].docker.dockerApi.dockerHost.uri=\"$dockuri\"" casc.yaml
+    yq -i ".jenkins.clouds[].docker.dockerApi.hostname=\"$hostname\"" casc.yaml
+    # update credential to include docker api cert
+    path2certs="/home/$username/.docker/certs"
+    servercertval=$(<$path2certs/server-cert.pem)
+    yq -i ".credentials.system.domainCredentials[].credentials[].x509ClientCert.clientCertificate=\"$servercertval\"" casc.yaml
+    cacertval=$(<$path2certs/ca-cert.pem)
+    yq -i ".credentials.system.domainCredentials[].credentials[].x509ClientCert.serverCaCertificate=\"$cacertval\"" casc.yaml
+    clientkeyval=$(<$path2certs/server-key.pem)
+    yq -i ".credentials.system.domainCredentials[].credentials[].x509ClientCert.clientKeySecret=\"$clientkeyval\"" casc.yaml
 }
 
 build_container_and_run_stack () {
