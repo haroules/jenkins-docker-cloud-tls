@@ -447,7 +447,7 @@ update_jenkins_casc () {
 }
 
 build_container_and_run_stack () {
-    echo -e "\n--Function: build_container_and_run_stack--"
+    if [ $debug -eq 0 ]; then echo -e "\n--Function: build_container_and_run_stack--"; fi
     # build container and stand up application
     # todo: stack name from date/time rather than static name
     if [[ $execute -eq 0 ]]; then
