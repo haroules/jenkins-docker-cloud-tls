@@ -33,7 +33,7 @@ The jenkins admin user password should be changed, note that you will also need 
  users:
       - id: "admin"
         name: "admin"
-        password: "jenkins"
+        password: "default"
 ```
 - setup.sh
 Update the auth portion of the curl command to coincide with what you used above in casc.yaml
@@ -219,7 +219,9 @@ uploading a container agent test job
 # Basic Requirements:
 - git ( not only needed to pull this project, but also to detect local changes during run)
 - Docker Compose V2
-- Docker Rootless configured and using TLS for API connections to the socket
+- Docker Rootless configured and using TLS for API connections  
+  see: https://github.com/haroules/docker-rootless-api-tls for example on how to do this
+- Docker Rootless with process owned by user running this script
 - Ubuntu 24 (should work on other distros as well, albeit minor modifications may be required)
 - python 3 with pip (required by docker compose)
 - Java Open JDK installed (needed for keytool, and jenkins-cli). Other java installations likely ok.
@@ -276,11 +278,11 @@ While the shell script is commented, below is an overview of what it does.
 6.  Build the container from Dockerfile which will use the certs created in previous steps, install plugins necessary from a list, mount volumes, and configure the controller using Jenkins CASC to create an initial user, some basic creds, and minimal server configuration, and avoid using the install wizard.
 The minimal jenkins configuration includes creating a credential to talk to docker via API, as well as setting up the docker cloud, and an agent configuration run from a separate container on the local docker cloud. Docker compose will then be called to stand up the container, volume, and network. Lastly there is a basic attempt at verifying the container is running, and that the jenkins application is up and responding.
 
-7. We'll pull the latest jenkins-cli jar from the running application, and use it to upload a sample job. To run the job, log into the application via browser, which, when run, will dynamically spin a container running in docker as an agent and run a simple echo command, run in the agent container. At conclusion of the job, the agent container is stopped.
+7. We'll pull the latest jenkins-cli jar from the running application, and use it to upload a sample job. To run the job, log into the application via browser, which, when run, will dynamically spin a container running in docker as an agent and run a simple echo command, run in the agent container. At conclusion of the job, the agent container is stopped automatically by the controller.
 
 # Credits, Future Improvements, Links, and TLDR;
 
-The purpose of this example was to create an starting foundation for deployment automation of jenkins casc, containerization, and using tls/https.  While every attempt was made to be aligned with security best practices, there is always room for improvement. While this should work out of the box with minimal changes, it's not expected that one would use it without customization. The expectation is that some modification would be made to secure, and operationalize this to meet your work environment, and this is merely a quickstart. Future versions will be more opinionated and likely force this. 
+The purpose of this example was to create an starting foundation for deployment automation of jenkins casc, containerization, and using tls/https.  While every attempt was made to be aligned with security best practices, there is always room for improvement. While this should work out of the box with minimal changes, it's not expected that one would use it without customization of the casc and env files. The expectation is that some modification would be made to secure, and operationalize this to meet your work environment, and this is merely a quickstart. 
 
 Credits:
 Matthias Lohr for the image update check script, which was modified (handle architecture, and allow pull of non local images) and integrated directly. Here's the link to the original source:

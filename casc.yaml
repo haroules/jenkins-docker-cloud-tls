@@ -118,7 +118,7 @@ jenkins:
       users:
       - id: "admin"
         name: "admin"
-        password: "jenkins"
+        password: "default"
         properties:
         - "myView"
         - "experimentalFlags"
