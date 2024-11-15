@@ -5,7 +5,6 @@
 - [Warnings, Secrets, and Recommendations:](#warnings-secrets-and-recommendations)
 - [Using the script and configuration template warnings](#using-the-script-and-configuration-template-warnings)
 - [Example run output, Browser screenshots](#example-run-output-browser-screenshots)
-- [Jenkins Screenshots:](#jenkins-screenshots)
 - [File descriptions and usage:](#file-descriptions-and-usage)
 - [Script General Workflow:](#script-general-workflow)
 - [Credits, Future Improvements, Links, and TLDR;](#credits-future-improvements-links-and-tldr)
