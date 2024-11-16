@@ -78,9 +78,10 @@ parse_cli () {
 }
 
 printhelp () {
-     echo "./setup.sh -e -d -s -c [password for cacerts] -k [password for java keystore] -p [password for jenkins]"
+     echo "./setup.sh -e -d -g -s -c [password for cacerts] -k [password for java keystore] -p [password for jenkins]"
      echo "-e would execute and actually run the script, default is dry-run print what it would do."
      echo "-d would turn on debug mode and print more output"
+     echo "-g would turn on debug mode and print more output"
      echo "-s would skip pre-requisite checks."
      echo "-c is to supply the password for the cacerts store used by jenkins."
      echo "-p is to supply the password for the jenkins user."
