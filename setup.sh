@@ -7,6 +7,8 @@ debug=1
 execute=1
 # set skip checks to 1 (default will run them) 
 skipchecks=1
+# set to 0 to ignore git finding untracked files
+ignoregit=1
 # password for jenkins user supplied if -p selected
 jenkspassword="default"
 # jenkins keystore pw user supplied if -k selected
@@ -17,8 +19,13 @@ jenkscacertpw="changeit"
 parse_cli () {
     local OPTIND
     optionselected=""
-    while getopts "p:dehsk:c:" opt; do
+    while getopts "c:deghk:p:s" opt; do
         case $opt in
+            c | -c | --c)
+                echo "Option -c selected, password for Jenkins cacerts supplied!"
+                jenkscacertpw=$OPTARG
+                optionselected+="-c "
+                ;;    
             d | -d | --d)
                 echo "Option -d selected, will be more verbose!"
                 debug=0
@@ -29,26 +36,26 @@ parse_cli () {
                 execute=0
                 optionselected+="-e "
                 ;;
-            s | -s | --s)
-                echo "Option -s selected, skipping pre-requisite checks!"
-                skipchecks=0
-                optionselected+="-s "
-                ;;
-            p | -p | --p)
-                echo "Option -p selected, password for Jenkins application supplied!"
-                jenkspassword=$OPTARG
-                optionselected+="-p "
+            g | -g | --g)
+                echo "Option -g selected, will ignore if git finds untracked changes"
+                ignoregit=0
+                optionselected+="-g "
                 ;;
             k | -k | --k)
                 echo "Option -k selected, password for Jenkins keystore supplied!"
                 jenkskeystorepw=$OPTARG
                 optionselected+="-k "
                 ;;
-            c | -c | --c)
-                echo "Option -c selected, password for Jenkins cacerts supplied!"
-                jenkscacertpw=$OPTARG
-                optionselected+="-c "
-                ;;    
+            p | -p | --p)
+                echo "Option -p selected, password for Jenkins application supplied!"
+                jenkspassword=$OPTARG
+                optionselected+="-p "
+                ;;
+            s | -s | --s)
+                echo "Option -s selected, skipping pre-requisite checks!"
+                skipchecks=0
+                optionselected+="-s "
+                ;;
             :)
                 echo "Option -${OPTARG} requires an argument."
                 printhelp
@@ -71,13 +78,13 @@ parse_cli () {
 }
 
 printhelp () {
-     echo "./setup.sh -e -d -s -p [password for jenkins] -k [password for java keystore] -c [password for cacerts]"
+     echo "./setup.sh -e -d -s -c [password for cacerts] -k [password for java keystore] -p [password for jenkins]"
      echo "-e would execute and actually run the script, default is dry-run print what it would do."
      echo "-d would turn on debug mode and print more output"
      echo "-s would skip pre-requisite checks."
+     echo "-c is to supply the password for the cacerts store used by jenkins."
      echo "-p is to supply the password for the jenkins user."
      echo "-k is to supply the password for the java keystore used by jenkins."
-     echo "-c is to supply the password for the cacerts store used by jenkins."
      echo "default password stored in script used when -p, -k, or -c is not specified."
      exit 0
 }
@@ -165,8 +172,19 @@ check_docker_api () {
 
 clean_intermediate_files () {
     if [ $debug -eq 0 ]; then echo -e "\n--Function: clean_intermediate_files--"; fi
-    #TODO use git to confirm the workspace is clean
-    gitstatus=$(git status -s)
+    #use git to confirm the workspace is clean, ignore if flag set so you can test changes
+    gitstatus=$(git status -s | wc -l)
+    if (( "$gitstatus" > 0 )); then
+        if [ $ignoregit -eq 0 ]; then   
+            git status -s
+            echo "git indicates sandbox has modified files, but ignore was chosen"
+        else
+            git status -s
+            echo "git indicates sandbox has modified files, exiting!"
+            exit -1
+        fi
+    fi
+    # list of files to be cleaned for each run. 
     filelist=(cacerts docker_api_root_ca.pem ca-cert.srl ca-key.pem server-req.pem server-key.pem server-ext.cnf server-cert.pem jenkins_keystore.jks jenkins.p12 jenkins-cli.jar)
     if [[ $execute == 0 ]]; then
         for i in "${filelist[@]}"; do
@@ -540,8 +558,8 @@ if [[ $skipchecks -eq 1 ]]; then
 fi
 
 # get latest container images
-#pull_latest_image "jenkins/jenkins:lts-jdk17"
-#pull_latest_image "jenkins/agent:jdk17"
+pull_latest_image "jenkins/jenkins:lts-jdk17"
+pull_latest_image "jenkins/agent:jdk17"
 
 # make sure clean sandbox before cert generations, and keystore operations
 clean_intermediate_files

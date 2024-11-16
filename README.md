@@ -21,6 +21,10 @@ The script will check requirements, configure, build, and run the container, gen
 If all goes to plan (and you imported the jenkins CA cert created into a browser, to avoid unknown certificate warnings we shouldn't be in the habbit of clicking), you should be able to access your jenkins controller via browser at https://[fqdn of your host]:8443 and you can run the sample job created.
 
 # Basic Requirements:
+- Host/Network firewall and network connections allow:
+   1. outbound connection on tcp 443/80 to docker.io and jenkins.io (dns tcp/53 to resolve docker.io and jenkins.io)
+   2. docker api connection on tcp/2376 
+   3. connection to tcp/8443 of your host to access jenkins from browser.
 - git ( not only needed to pull this project, but also to detect local changes during run)
 - Docker Compose V2
 - Docker Rootless configured and using TLS for API connections  
