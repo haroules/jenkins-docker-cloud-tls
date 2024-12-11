@@ -1,5 +1,4 @@
 #!/bin/bash
-
 # output variables, and other debug info
 debug=1 
 # set the execute flag to 1 to prevent accidental execution
@@ -178,10 +177,10 @@ clean_intermediate_files () {
     if (( "$gitstatus" > 0 )); then
         if [ $ignoregit -eq 0 ]; then   
             git status -s
-            echo "git indicates sandbox has modified files, but ignore was chosen"
+            echo "git indicates sandbox has modified files, but ignore was chosen!"
         else
             git status -s
-            echo "git indicates sandbox has modified files, exiting!"
+            echo "git indicates sandbox has modified files, use -g or git reset --hard for next run.  exiting!"
             exit -1
         fi
     fi

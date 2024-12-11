@@ -12,7 +12,7 @@
 <!-- /TOC -->
 
 # Description:
-Example of running jenkins controller from a docker container running rootless, using docker API over TLS, creating a docker cloud in jenkins, and usng jenkins CASC (configuration as code). The goal here was to put together an automated deployment end to end with some basic attempt at security, and example of infrastructure and application deployment as code.
+Example of running jenkins controller from a docker container running rootless, using docker API over TLS, creating a docker cloud in jenkins, and using jenkins CASC (configuration as code). The goal here was to put together an automated deployment end to end with some basic attempt at security, and example of infrastructure and application deployment as code.
 
 This project uses jenkins casc (configuration as code) to configure the controller, Jenkins plugins, and credentials for connecting to the docker api as well as certificate and keystores. The casc configuration includes set up of a docker cloud on the jenkins controller, and the script will push a test job that will exercise running agents as containers.
 
@@ -54,12 +54,12 @@ Secrets that are updated on the fly from the script if supplied (defaults will b
 Commercially purchased and trusted certs are better. This example uses self signed for demonstration purposes only, in a production environment, it's recommended to use commercially purchased or domain generated certs that align with your environment. Frequent update of the container, and plugins is also recommended.
 
 # Using the script and configuration template warnings
-Before running the setup.sh, there are a few manual edits to be made as they pertain to your environment if you do not want to supply a password for jenkins user, cacerts, or jenkins keystore on the cli. (ie. you dont want to supply -p, -k, -c to cli exposing creds in command history).  Either way you don't want to commit casc.yaml or jenkins-controller-docker-compose.env after a run (unless you made non credential based changes to the config), otherwise those secrets could be uploaded to git. 
+Before running the setup.sh, there are a few manual edits to be made as they pertain to your environment if you do not want to supply a password for jenkins user, cacerts, or jenkins keystore on the cli. *Note that you can leave a space before the commmands and flags, and the shell will not store it into history*.  Either way you don't want to commit casc.yaml or jenkins-controller-docker-compose.env after a run (unless you made non credential based changes to the config), otherwise those secrets could be uploaded to git. The script will exit if it determines files are modified and no -g flag was supplied (to ignore git).
 The intention is to do one of the following (otherwise secrets might not align and things will break):
 - edit the config files locally
 - supply the values on the cli
 
-If you choose to edit manually:  
+If you choose to edit manually (remember to supply -g flag):  
 casc.yaml (The jenkins admin user password should be changed)
 ```
  users:
